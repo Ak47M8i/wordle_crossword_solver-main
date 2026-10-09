@@ -1,10 +1,9 @@
-"""AI-Powered Wordle and Crossword Clue Solver Streamlit Application."""
+"""Gamified AI-Powered Wordle and Crossword Clue Solver Streamlit Application."""
 
 import html
 import random
 import re
 from typing import Any, Dict, List, Tuple
-
 import pandas as pd
 import streamlit as st
 
@@ -30,216 +29,209 @@ from wordle_engine import (
 )
 
 # ---------------------------------------------------------
-# Page Configuration & Custom CSS
+# Page Configuration & Gamified Arcade CSS
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="AI Wordle & Crossword Solver",
-    page_icon="🧠",
+    page_title="Arcade AI: Wordle & Crossword Master",
+    page_icon="🎮",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-CUSTOM_CSS = """
+GAMIFIED_CSS = """
 <style>
-/* Main Container & Modern Typography */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=JetBrains+Mono:wght@600;700&display=swap');
 
 html, body, [class*="css"] {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Outfit', sans-serif;
 }
 
-/* Header Hero Banner */
-.hero-container {
-    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-    border: 1px solid #334155;
-    border-radius: 12px;
-    padding: 24px;
+/* Arcade Hero Header */
+.arcade-hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
+    border: 2px solid #6366f1;
+    border-radius: 16px;
+    padding: 28px;
     margin-bottom: 24px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 0 30px rgba(99, 102, 241, 0.25);
+    position: relative;
+    overflow: hidden;
 }
-
-.hero-title {
-    font-size: 2.1rem;
-    font-weight: 800;
+.arcade-title {
+    font-size: 2.4rem;
+    font-weight: 900;
     margin: 0;
-    background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc);
+    background: linear-gradient(90deg, #38bdf8, #818cf8, #f472b6);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
-
-.hero-subtitle {
-    font-size: 1.0rem;
-    color: #94a3b8;
-    margin-top: 6px;
+.arcade-subtitle {
+    font-size: 1.05rem;
+    color: #cbd5e1;
+    margin-top: 8px;
     margin-bottom: 0px;
+    font-weight: 400;
 }
 
-/* Wordle Tile Styling */
+/* Gamified Stat Badges */
+.stat-pill {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid #475569;
+    border-radius: 12px;
+    padding: 12px 16px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #38bdf8;
+}
+.stat-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: #94a3b8;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+}
+
+/* Wordle Tile Styles */
 .wordle-row {
     display: flex;
     gap: 8px;
     margin-bottom: 8px;
     justify-content: flex-start;
 }
-
 .wordle-tile {
-    width: 48px;
-    height: 48px;
+    width: 52px;
+    height: 52px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 1.5rem;
+    font-size: 1.6rem;
     font-weight: 700;
     color: #ffffff;
-    border-radius: 6px;
+    border-radius: 8px;
     text-transform: uppercase;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
     user-select: none;
+    transition: transform 0.2s ease;
 }
-
-.tile-green {
-    background-color: #538d4e !important;
-    border: 1px solid #457841;
+.wordle-tile:hover {
+    transform: scale(1.05);
 }
+.tile-green { background-color: #22c55e !important; border: 2px solid #16a34a; }
+.tile-yellow { background-color: #eab308 !important; border: 2px solid #ca8a04; color: #1e293b !important; }
+.tile-gray { background-color: #334155 !important; border: 2px solid #1e293b; color: #94a3b8 !important; }
+.tile-empty { background-color: #0f172a !important; border: 2px dashed #475569; color: #64748b !important; }
 
-.tile-yellow {
-    background-color: #b59f3b !important;
-    border: 1px solid #998632;
+/* Interactive Virtual Keyboard */
+.kb-row {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 6px;
 }
-
-.tile-gray {
-    background-color: #3a3a3c !important;
-    border: 1px solid #2e2e30;
+.kb-key {
+    background-color: #334155;
+    color: #f8fafc;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
+.kb-green { background-color: #22c55e !important; color: #ffffff !important; }
+.kb-yellow { background-color: #eab308 !important; color: #1e293b !important; }
+.kb-gray { background-color: #1e293b !important; color: #475569 !important; border: 1px solid #1e1b4b; }
 
-.tile-empty {
-    background-color: #1e293b !important;
-    border: 2px dashed #475569;
-    color: #94a3b8 !important;
-}
-
-/* Crossword Letter Slots */
+/* Crossword Slots */
 .crossword-slot-container {
     display: flex;
     gap: 6px;
-    margin: 10px 0;
+    margin: 12px 0;
     flex-wrap: wrap;
 }
-
 .crossword-slot {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 1.25rem;
+    font-size: 1.35rem;
     font-weight: 700;
-    border-radius: 4px;
+    border-radius: 8px;
     background: #0f172a;
-    border: 1px solid #38bdf8;
+    border: 2px solid #38bdf8;
     color: #38bdf8;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
 }
-
 .crossword-slot.blank {
     background: #1e293b;
-    border: 1px dashed #64748b;
+    border: 2px dashed #475569;
     color: #64748b;
+    box-shadow: none;
 }
 
-/* Metric and Info Badges */
-.badge-green {
-    background-color: rgba(83, 141, 78, 0.2);
-    color: #4ade80;
-    border: 1px solid rgba(83, 141, 78, 0.4);
-    padding: 3px 8px;
-    border-radius: 6px;
-    font-size: 0.82rem;
-    font-weight: 600;
-}
-
-.badge-yellow {
-    background-color: rgba(181, 159, 59, 0.2);
-    color: #facc15;
-    border: 1px solid rgba(181, 159, 59, 0.4);
-    padding: 3px 8px;
-    border-radius: 6px;
-    font-size: 0.82rem;
-    font-weight: 600;
-}
-
-.badge-blue {
-    background-color: rgba(56, 189, 248, 0.15);
-    color: #38bdf8;
-    border: 1px solid rgba(56, 189, 248, 0.35);
-    padding: 3px 8px;
-    border-radius: 6px;
-    font-size: 0.82rem;
-    font-weight: 600;
-}
-
-/* Result Card */
-.result-card {
-    background: #1e293b;
+/* Arcade Result Cards */
+.arcade-card {
+    background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
     border: 1px solid #334155;
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 12px;
-    transition: transform 0.15s ease, border-color 0.15s ease;
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 14px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+    transition: all 0.2s ease;
 }
-
-.result-card:hover {
-    border-color: #38bdf8;
-    transform: translateY(-1px);
+.arcade-card:hover {
+    border-color: #6366f1;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.2);
 }
 </style>
 """
-
-st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
-
+st.markdown(GAMIFIED_CSS, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
 # Cached Resource Loaders
 # ---------------------------------------------------------
-@st.cache_resource(show_spinner="Initializing Crossword Clue Matcher Engine...")
+@st.cache_resource(show_spinner="⚡ Loading Crossword Matrix Engine...")
 def get_crossword_engine() -> CrosswordEngine:
-    """Initializes and caches the Crossword TF-IDF search engine."""
     return CrosswordEngine()
-
 
 @st.cache_data(show_spinner=False)
 def load_wordle_dictionaries() -> Tuple[List[str], set]:
-    """Loads and caches the target and allowed Wordle dictionaries."""
-    targets = get_target_words()
-    valid_set = get_all_valid_words()
-    return targets, valid_set
-
+    return get_target_words(), get_all_valid_words()
 
 # ---------------------------------------------------------
-# Session State Initialization
+# Session State Initialization (Gamification Stats)
 # ---------------------------------------------------------
 if "wordle_history" not in st.session_state:
-    st.session_state.wordle_history = []  # List of {"guess": str, "pattern": tuple[int, ...]}
-
+    st.session_state.wordle_history = []
 if "sim_history" not in st.session_state:
     st.session_state.sim_history = None
-
+if "games_played" not in st.session_state:
+    st.session_state.games_played = 0
+if "win_streak" not in st.session_state:
+    st.session_state.win_streak = 0
 if "cw_clue_input" not in st.session_state:
-    st.session_state.cw_clue_input = "Egyptian queen for short"
-
+    st.session_state.cw_clue_input = "Capital of France and City of Light"
 if "cw_pattern_input" not in st.session_state:
-    st.session_state.cw_pattern_input = "C _ _ O"
-
+    st.session_state.cw_pattern_input = "P _ _ _ S"
 if "cw_length_input" not in st.session_state:
-    st.session_state.cw_length_input = 4
-
+    st.session_state.cw_length_input = 5
 
 # ---------------------------------------------------------
-# Helper Functions for UI Rendering
+# Helper Functions
 # ---------------------------------------------------------
 def render_tiles_html(word: str, pattern: Tuple[int, ...]) -> str:
-    """Renders HTML for a row of Wordle feedback tiles."""
     html_parts = ['<div class="wordle-row">']
     class_map = {GRAY: "tile-gray", YELLOW: "tile-yellow", GREEN: "tile-green"}
     for ch, code in zip(word.upper(), pattern):
@@ -248,24 +240,51 @@ def render_tiles_html(word: str, pattern: Tuple[int, ...]) -> str:
     html_parts.append('</div>')
     return "".join(html_parts)
 
+def render_virtual_keyboard(history: List[Dict[str, Any]]) -> str:
+    """Computes letter states and renders a gamified virtual QWERTY keyboard."""
+    letter_states = {} # 0: unplayed, 1: gray, 2: yellow, 3: green
+    for step in history:
+        g = step["guess"].upper()
+        pat = step["pattern"]
+        for ch, code in zip(g, pat):
+            val = code + 1 # Convert 0,1,2 to 1,2,3
+            current = letter_states.get(ch, 0)
+            if val > current:
+                if current == 3 and val != 3:
+                    continue # Green overrides others
+                letter_states[ch] = val
+
+    rows = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"]
+    kb_html = '<div style="margin: 15px 0;">'
+    for r in rows:
+        kb_html += '<div class="kb-row">'
+        for ch in r:
+            state = letter_states.get(ch, 0)
+            cls = "kb-key"
+            if state == 3:
+                cls += " kb-green"
+            elif state == 2:
+                cls += " kb-yellow"
+            elif state == 1:
+                cls += " kb-gray"
+            kb_html += f'<div class="{cls}">{ch}</div>'
+        kb_html += '</div>'
+    kb_html += '</div>'
+    return kb_html
 
 def render_pattern_slots_html(pattern: str, length: int) -> str:
-    """Renders visual character slots for a crossword query pattern."""
     engine = CrosswordEngine
     compiled_regex, detected_len = engine.parse_pattern_to_regex(pattern, length)
     display_len = length if length > 0 else (detected_len if detected_len > 0 else len(pattern))
-
     clean_chars = []
     for ch in pattern:
         if ch.isalpha():
             clean_chars.append(ch.upper())
         elif ch in ['_', '.', '?', '*']:
             clean_chars.append('_')
-
     while len(clean_chars) < display_len:
         clean_chars.append('_')
     clean_chars = clean_chars[:display_len]
-
     html_parts = ['<div class="crossword-slot-container">']
     for ch in clean_chars:
         if ch == '_':
@@ -275,429 +294,261 @@ def render_pattern_slots_html(pattern: str, length: int) -> str:
     html_parts.append('</div>')
     return "".join(html_parts)
 
-
 # ---------------------------------------------------------
-# Sidebar Navigation & General Metrics
+# Sidebar Dashboard & Controls
 # ---------------------------------------------------------
 target_words, valid_words_set = load_wordle_dictionaries()
 cw_engine = get_crossword_engine()
 
 with st.sidebar:
-    st.markdown("## 🧠 Mode Selection")
+    st.markdown("### 🎮 ARCADE SELECTOR")
     mode = st.radio(
-        label="Select Application Mode",
-        options=["Wordle Solver & Assistant", "Crossword Clue Matcher"],
+        label="App Mode",
+        options=["Wordle AI Battle & Solver", "Crossword Crypto Matcher"],
         index=0,
         label_visibility="collapsed"
     )
-
     st.markdown("---")
-    st.markdown("### 📊 Engine Status")
-    col_sb1, col_sb2 = st.columns(2)
-    with col_sb1:
-        st.metric("Wordle Secrets", f"{len(target_words):,}")
-    with col_sb2:
-        st.metric("Crossword Clues", f"{len(cw_engine.entries):,}")
-
-    st.caption("Powered by Shannon Entropy & TF-IDF Semantic Vectorization")
-
+    st.markdown("### 🏆 PLAYER STATS")
+    s_col1, s_col2 = st.columns(2)
+    with s_col1:
+        st.markdown(f"""<div class="stat-pill"><div class="stat-value">{st.session_state.games_played}</div><div class="stat-label">Played</div></div>""", unsafe_allow_html=True)
+    with s_col2:
+        st.markdown(f"""<div class="stat-pill"><div class="stat-value">{st.session_state.win_streak}</div><div class="stat-label">Streak 🔥</div></div>""", unsafe_allow_html=True)
     st.markdown("---")
-    st.markdown("### 💡 Quick Guide")
-    if mode == "Wordle Solver & Assistant":
-        st.markdown(
-            """
-            - **Interactive Assistant**: Input your guess and tile colors (🟩 Green, 🟨 Yellow, ⬛ Gray) to compute the mathematically optimal next move.
-            - **AI Simulation Mode**: Watch the AI automatically solve any hidden secret word step-by-step using Information Theory.
-            """
-        )
-    else:
-        st.markdown(
-            """
-            - **Pattern Syntax**: Use `_`, `.` or `?` for blank letters (e.g. `C _ _ T` or `..T`).
-            - **Semantic Matching**: Enter natural language clues to search our dictionary & clue corpus via TF-IDF cosine similarity.
-            """
-        )
-
+    st.markdown("### ⚡ ENGINE SPECS")
+    st.caption(f"• Wordle Secret Base: **{len(target_words):,} words**")
+    st.caption(f"• Crossword Corpus: **{len(cw_engine.entries):,} entries**")
+    st.caption("• Algorithms: Shannon Entropy & TF-IDF Cosine Similarity")
 
 # =========================================================
-# MODE 1: WORDLE SOLVER & ASSISTANT
+# MODE 1: WORDLE AI BATTLE & SOLVER
 # =========================================================
-if mode == "Wordle Solver & Assistant":
+if mode == "Wordle AI Battle & Solver":
     st.markdown(
         """
-        <div class="hero-container">
-            <h1 class="hero-title">🧩 AI Wordle Solver & Assistant</h1>
-            <p class="hero-subtitle">
-                Harness Information Theory and Shannon Entropy to calculate optimal guesses, eliminate possibilities, and simulate autonomous gameplay.
+        <div class="arcade-hero">
+            <h1 class="arcade-title">🎯 Wordle Entropy Arena</h1>
+            <p class="arcade-subtitle">
+                Outsmart the secret word using Information Theory, or launch autonomous AI simulations to watch Shannon entropy decimate possibilities in real-time!
             </p>
         </div>
         """,
         unsafe_allow_html=True
     )
 
-    wordle_tab_live, wordle_tab_sim, wordle_tab_theory = st.tabs([
-        "🎯 Interactive Live Assistant",
-        "🤖 Autonomous AI Simulation",
-        "📐 Information Theory & Top Openers"
+    tab_live, tab_sim, tab_theory = st.tabs([
+        "🎮 Interactive Live Game",
+        "🤖 Autonomous AI Battle",
+        "🧠 Entropy Mechanics"
     ])
 
-    # -----------------------------------------------------
-    # TAB 1A: INTERACTIVE LIVE ASSISTANT
-    # -----------------------------------------------------
-    with wordle_tab_live:
-        st.markdown("### 🎮 Live Game Board & Guess Input")
-        st.info("Play along with your current Wordle game. Enter each guess and the feedback colors you received to receive real-time optimal recommendations.")
+    # --- TAB 1: LIVE INTERACTIVE GAME ---
+    with tab_live:
+        st.markdown("### 🕹️ Live Board & AI Assistant")
+        st.write("Enter your word guesses and color feedback to get mathematically calculated optimal next moves.")
 
         col_board, col_recs = st.columns([1, 1.2], gap="large")
-
-        # Compute remaining candidates based on history
+        
         current_candidates = list(target_words)
         for step in st.session_state.wordle_history:
             current_candidates = filter_candidates(current_candidates, step["guess"], step["pattern"])
 
         with col_board:
-            st.markdown("#### 📋 Current Game Board")
+            st.markdown("#### 📋 Active Game Board")
             if not st.session_state.wordle_history:
-                st.markdown(
-                    """
-                    <div style="background: #1e293b; padding: 20px; border-radius: 8px; border: 1px dashed #475569; text-align: center; color: #94a3b8;">
-                        No guesses entered yet. Input your first guess below or pick an optimal opener from the recommendations!
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
+                st.info("No guesses logged yet. Start by entering a guess below or pick 'SOARE' / 'CRANE'!")
             else:
                 for idx, step in enumerate(st.session_state.wordle_history, 1):
-                    tiles_code = render_tiles_html(step["guess"], step["pattern"])
-                    st.markdown(f"**Turn {idx}:** {step['guess']}", unsafe_allow_html=True)
-                    st.markdown(tiles_code, unsafe_allow_html=True)
+                    st.markdown(f"**Turn {idx}:** `{step['guess']}`")
+                    st.markdown(render_tiles_html(step["guess"], step["pattern"]), unsafe_allow_html=True)
+                
+                # Render Virtual Keyboard
+                st.markdown("#### ⌨️ Virtual Letter Status")
+                st.markdown(render_virtual_keyboard(st.session_state.wordle_history), unsafe_allow_html=True)
 
             st.markdown("---")
-            st.markdown("#### ➕ Add New Guess")
-
-            with st.form("add_guess_form", clear_on_submit=False):
-                input_guess_word = st.text_input(
-                    "5-Letter Guess Word",
-                    value="",
-                    max_chars=5,
-                    placeholder="e.g. CRANE",
-                    help="Enter a valid 5-letter English word."
-                ).strip().upper()
-
-                st.markdown("**Letter Feedback Colors:**")
-                st.caption("Select the color feedback for each letter (0=⬛ Gray, 1=🟨 Yellow, 2=🟩 Green)")
+            st.markdown("#### ➕ Log Your Guess Feedback")
+            with st.form("live_guess_form", clear_on_submit=False):
+                guess_input = st.text_input("5-Letter Guess", max_chars=5, placeholder="e.g. CRANE").strip().upper()
+                st.markdown("**Tile Colors:** (0 = ⬛ Gray, 1 = 🟨 Yellow, 2 = 🟩 Green)")
                 
                 c1, c2, c3, c4, c5 = st.columns(5)
-                color_options = ["⬛ Gray", "🟨 Yellow", "🟩 Green"]
-                
-                with c1:
-                    fb0 = st.selectbox("Pos 1", color_options, index=0, key="fb_0")
-                with c2:
-                    fb1 = st.selectbox("Pos 2", color_options, index=0, key="fb_1")
-                with c3:
-                    fb2 = st.selectbox("Pos 3", color_options, index=0, key="fb_2")
-                with c4:
-                    fb3 = st.selectbox("Pos 4", color_options, index=0, key="fb_3")
-                with c5:
-                    fb4 = st.selectbox("Pos 5", color_options, index=0, key="fb_4")
+                opts = ["⬛ Gray", "🟨 Yellow", "🟩 Green"]
+                with c1: f0 = st.selectbox("1", opts, index=0, key="k1")
+                with c2: f1 = st.selectbox("2", opts, index=0, key="k2")
+                with c3: f2 = st.selectbox("3", opts, index=0, key="k3")
+                with c4: f3 = st.selectbox("4", opts, index=0, key="k4")
+                with c5: f4 = st.selectbox("5", opts, index=0, key="k5")
 
-                # Quick text code alternative
-                quick_code = st.text_input(
-                    "Or Quick Code (Optional)",
-                    placeholder="e.g. 01200 or GYBGG (G=Green, Y=Yellow, B=Gray)",
-                    help="You can also type a 5-char code directly."
-                ).strip().upper()
-
-                submitted = st.form_submit_button("📥 Submit Guess Feedback", use_container_width=True)
-
+                submitted = st.form_submit_button("🚀 Submit Guess & Compute Next Step", use_container_width=True)
                 if submitted:
-                    if len(input_guess_word) != 5 or not input_guess_word.isalpha():
-                        st.error("Please enter a valid 5-letter word consisting of letters only.")
+                    if len(guess_input) != 5 or not guess_input.isalpha():
+                        st.error("Please enter a valid 5-letter alphabetic word.")
                     else:
-                        # Determine feedback pattern
-                        if quick_code and len(quick_code) == 5:
-                            pattern_list = []
-                            valid_code = True
-                            for ch in quick_code:
-                                if ch in ['G', '2']:
-                                    pattern_list.append(GREEN)
-                                elif ch in ['Y', '1']:
-                                    pattern_list.append(YELLOW)
-                                elif ch in ['B', 'X', '0', '_', 'G']:
-                                    pattern_list.append(GRAY)
-                                else:
-                                    valid_code = False
-                                    break
-                            if valid_code and len(pattern_list) == 5:
-                                pattern_tuple = tuple(pattern_list)
-                            else:
-                                st.warning("Quick code had unrecognized characters, used dropdown selections instead.")
-                                color_to_val = {"⬛ Gray": GRAY, "🟨 Yellow": YELLOW, "🟩 Green": GREEN}
-                                pattern_tuple = (color_to_val[fb0], color_to_val[fb1], color_to_val[fb2], color_to_val[fb3], color_to_val[fb4])
-                        else:
-                            color_to_val = {"⬛ Gray": GRAY, "🟨 Yellow": YELLOW, "🟩 Green": GREEN}
-                            pattern_tuple = (color_to_val[fb0], color_to_val[fb1], color_to_val[fb2], color_to_val[fb3], color_to_val[fb4])
-
-                        # Append to history
-                        st.session_state.wordle_history.append({
-                            "guess": input_guess_word,
-                            "pattern": pattern_tuple
-                        })
+                        c_map = {"⬛ Gray": GRAY, "🟨 Yellow": YELLOW, "🟩 Green": GREEN}
+                        pat_tuple = (c_map[f0], c_map[f1], c_map[f2], c_map[f3], c_map[f4])
+                        st.session_state.wordle_history.append({"guess": guess_input, "pattern": pat_tuple})
+                        
+                        # Check win condition
+                        if pat_tuple == (GREEN, GREEN, GREEN, GREEN, GREEN):
+                            st.session_state.games_played += 1
+                            st.session_state.win_streak += 1
+                            st.balloons()
                         st.rerun()
 
-            # Board action buttons
-            btn_col1, btn_col2 = st.columns(2)
-            with btn_col1:
+            b1, b2 = st.columns(2)
+            with b1:
                 if st.button("↩️ Undo Last Guess", use_container_width=True, disabled=len(st.session_state.wordle_history) == 0):
                     if st.session_state.wordle_history:
                         st.session_state.wordle_history.pop()
                         st.rerun()
-            with btn_col2:
+            with b2:
                 if st.button("🔄 Reset Board", use_container_width=True, disabled=len(st.session_state.wordle_history) == 0):
                     st.session_state.wordle_history = []
                     st.rerun()
 
         with col_recs:
-            st.markdown("#### 🧠 Real-Time Recommendation Engine")
-            
-            # Display candidate metrics
-            m_col1, m_col2 = st.columns(2)
-            with m_col1:
-                st.metric("Remaining Candidates", f"{len(current_candidates):,}")
-            with m_col2:
+            st.markdown("### 💡 AI Recommendation Engine")
+            m1, m2 = st.columns(2)
+            with m1:
+                st.metric("Remaining Pool", f"{len(current_candidates):,}")
+            with m2:
                 if len(target_words) > 0:
-                    pct_elim = ((len(target_words) - len(current_candidates)) / len(target_words)) * 100
-                    st.metric("Elimination Rate", f"{pct_elim:.1f}%")
+                    elim = ((len(target_words) - len(current_candidates)) / len(target_words)) * 100
+                    st.metric("Elimination Rate", f"{elim:.1f}%")
 
             if len(current_candidates) == 0:
-                st.error("⚠️ No words in the dictionary match this exact combination of feedback patterns! Please verify your inputs or click 'Undo Last Guess'.")
+                st.error("⚠️ No words match this exact combination. Check your inputs or undo the last guess.")
             elif len(current_candidates) == 1:
-                sole_word = current_candidates[0]
-                st.success(f"🎉 **Guaranteed Solution Found:** The secret word is **{sole_word}**!")
-                st.markdown(render_tiles_html(sole_word, (GREEN, GREEN, GREEN, GREEN, GREEN)), unsafe_allow_html=True)
+                sol = current_candidates[0]
+                st.success(f"🎉 **Target Isolated:** The secret word is **{sol}**!")
+                st.markdown(render_tiles_html(sol, (GREEN, GREEN, GREEN, GREEN, GREEN)), unsafe_allow_html=True)
             else:
-                # Show top recommendations
-                with st.spinner("Calculating Shannon Entropy rankings across possibilities..."):
-                    recommendations = rank_next_guesses(
-                        candidate_secrets=current_candidates,
-                        allowed_vocab=list(target_words),
-                        top_n=10,
-                        prioritize_possible=True
-                    )
-
-                if recommendations:
-                    st.markdown("##### 🏆 Optimal Next Guesses (by Information Gain)")
-                    
-                    rec_data = []
-                    for rank, r in enumerate(recommendations, 1):
-                        status = "🎯 Possible Secret" if r["is_possible"] else "💡 Strategic Burner"
-                        rec_data.append({
+                with st.spinner("Computing Shannon Entropy across candidate partitions..."):
+                    recs = rank_next_guesses(candidate_secrets=current_candidates, allowed_vocab=list(target_words), top_n=8)
+                
+                if recs:
+                    st.markdown("##### 🌟 Top Optimal Next Guesses")
+                    rec_rows = []
+                    for rank, r in enumerate(recs, 1):
+                        st_type = "✨ Secret Match" if r["is_possible"] else "🔥 Strategic Burner"
+                        rec_rows.append({
                             "Rank": rank,
                             "Word": r["word"],
                             "Entropy (bits)": f"{r['entropy']:.3f}",
-                            "Exp. Remaining": f"{r['expected_remaining']:.1f}",
-                            "Win Chance": f"{r['win_probability']:.1f}%",
-                            "Type": status
+                            "Win %": f"{r['win_probability']:.1f}%",
+                            "Type": st_type
                         })
-
-                    rec_df = pd.DataFrame(rec_data)
-                    st.dataframe(rec_df, hide_index=True, use_container_width=True)
-
-                    top_word = recommendations[0]["word"]
-                    top_h = recommendations[0]["entropy"]
+                    st.dataframe(pd.DataFrame(rec_rows), hide_index=True, use_container_width=True)
+                    
+                    top_w = recs[0]["word"]
+                    top_h = recs[0]["entropy"]
                     st.markdown(
                         f"""
-                        <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid #38bdf8; border-radius: 8px; padding: 12px; margin-top: 10px;">
-                            <strong>💡 AI Recommendation:</strong> Play <strong>{top_word}</strong> for an expected information gain of <strong>{top_h:.3f} bits</strong>.
+                        <div style="background: rgba(99, 102, 241, 0.15); border: 1px solid #6366f1; border-radius: 10px; padding: 14px; margin-top: 12px;">
+                            <strong>⚡ Best AI Move:</strong> Play <strong>{top_w}</strong> to harvest <strong>{top_h:.3f} bits</strong> of expected information!
                         </div>
                         """,
                         unsafe_allow_html=True
                     )
 
-                # Expandable view of all remaining candidates
-                with st.expander(f"🔍 View all {len(current_candidates)} remaining candidate words"):
-                    pills_html = " ".join([f'<span class="badge-blue" style="margin: 2px; display: inline-block;">{w}</span>' for w in sorted(current_candidates)[:200]])
-                    if len(current_candidates) > 200:
-                        pills_html += f" <em>...and {len(current_candidates) - 200} more</em>"
-                    st.markdown(pills_html, unsafe_allow_html=True)
+    # --- TAB 2: AUTONOMOUS SIMULATION ---
+    with tab_sim:
+        st.markdown("### 🤖 Autonomous AI Battle Simulation")
+        st.write("Watch the AI algorithm play against a hidden word autonomously using Shannon Entropy.")
 
-    # -----------------------------------------------------
-    # TAB 1B: AUTONOMOUS AI SIMULATION MODE
-    # -----------------------------------------------------
-    with wordle_tab_sim:
-        st.markdown("### 🤖 Autonomous AI Wordle Simulation")
-        st.write("Pick or generate a hidden secret word. The AI will autonomously deduce and solve the puzzle step-by-step using Shannon entropy.")
-
-        sim_col1, sim_col2 = st.columns([1, 1], gap="medium")
-        with sim_col1:
-            secret_selection_mode = st.radio(
-                "Secret Word Source",
-                ["Choose from Popular Targets", "Random Secret Word", "Enter Custom Secret Word"],
-                horizontal=True
-            )
-
-            if secret_selection_mode == "Choose from Popular Targets":
-                popular_samples = ["SLATE", "CRANE", "ROBOT", "VIVID", "JAZZY", "KNIFE", "LIGHT", "ZEBRA", "COBRA", "APPLE"]
-                chosen_secret = st.selectbox("Select Secret Word", popular_samples, index=0)
-            elif secret_selection_mode == "Random Secret Word":
-                if st.button("🎲 Draw Random Word"):
-                    st.session_state.random_secret = random.choice(target_words)
-                if "random_secret" not in st.session_state:
-                    st.session_state.random_secret = random.choice(target_words)
-                chosen_secret = st.session_state.random_secret
-                st.info(f"Target selected: **{chosen_secret}**")
+        s_col1, s_col2 = st.columns([1, 1], gap="medium")
+        with s_col1:
+            sec_mode = st.radio("Secret Source", ["Popular Targets", "Random Secret", "Custom Secret"], horizontal=True)
+            if sec_mode == "Popular Targets":
+                secret_word = st.selectbox("Select Word", ["SLATE", "CRANE", "ROBOT", "VIVID", "JAZZY", "GHOST", "ZEBRA"])
+            elif sec_mode == "Random Secret":
+                if st.button("🎲 Roll Random Secret"):
+                    st.session_state.rand_sec = random.choice(target_words)
+                secret_word = st.session_state.get("rand_sec", "CRANE")
+                st.info(f"Secret Target Loaded: **{secret_word}**")
             else:
-                custom_word_input = st.text_input("Enter Any 5-Letter Secret Word", value="GHOST", max_chars=5).strip().upper()
-                chosen_secret = custom_word_input
+                secret_word = st.text_input("Custom Secret Word", "MAGIC", max_chars=5).strip().upper()
 
-        with sim_col2:
-            opener_choice = st.selectbox(
-                "AI Starting Opener",
-                ["SOARE (Optimal: 5.885 bits)", "ROATE (5.885 bits)", "RAISE (5.878 bits)", "SLATE (5.856 bits)", "CRANE (5.740 bits)", "AUDIO (Vowel-Heavy: 5.032 bits)"],
-                index=0
-            )
-            opener_word = opener_choice.split()[0]
-            max_turns_allowed = st.slider("Max Allowed Turns", min_value=4, max_value=8, value=6)
+        with s_col2:
+            opener = st.selectbox("AI Opening Move", ["SOARE (5.885 bits)", "ROATE (5.885 bits)", "RAISE (5.878 bits)", "SLATE (5.856 bits)"]).split()[0]
+            max_t = st.slider("Max Turns Limit", 4, 8, 6)
+            run_sim = st.button("🚀 Launch Autonomous Simulation", type="primary", use_container_width=True)
 
-            st.write("")
-            run_sim_btn = st.button("▶️ Launch AI Simulation", type="primary", use_container_width=True)
-
-        if run_sim_btn:
-            if len(chosen_secret) != 5 or not chosen_secret.isalpha():
-                st.error("The secret word must be a valid 5-letter alphabetic word.")
+        if run_sim:
+            if len(secret_word) != 5 or not secret_word.isalpha():
+                st.error("Secret must be a valid 5-letter word.")
             else:
-                with st.spinner("AI is evaluating feedback and calculating entropy distributions..."):
-                    sim_result = simulate_game(
-                        secret_word=chosen_secret,
-                        first_guess=opener_word,
-                        max_turns=max_turns_allowed
-                    )
-                    st.session_state.sim_history = sim_result
+                with st.spinner("AI calculating partition probabilities..."):
+                    res = simulate_game(secret_word=secret_word, first_guess=opener, max_turns=max_t)
+                    st.session_state.sim_history = res
 
-        # Display simulation results if available
         if st.session_state.sim_history:
-            sim_res = st.session_state.sim_history
+            sim = st.session_state.sim_history
             st.markdown("---")
-            st.markdown("#### 🎬 Step-by-Step Simulation Replay")
-
-            won = sim_res["won"]
-            turns_taken = sim_res["turns_taken"]
-            secret = sim_res["secret_word"]
-
-            if won:
-                st.success(f"🏆 **Victory!** The AI solved the puzzle in **{turns_taken}** turns for the target word **{secret}**!")
+            if sim["won"]:
+                st.success(f"🏆 **AI Victory!** Solved **{sim['secret_word']}** in **{sim['turns_taken']} turns**!")
+                st.balloons()
             else:
-                st.error(f"❌ **Exceeded Limit:** The AI was unable to solve **{secret}** within {max_turns_allowed} turns.")
+                st.error(f"❌ AI failed to solve **{sim['secret_word']}** within {max_t} turns.")
 
-            # Step-by-step turns
-            for step in sim_res["history"]:
-                turn_num = step["turn"]
-                guess_w = step["guess"]
-                fb = step["feedback"]
-                h_val = step["entropy"]
-                rem_bef = step["remaining_before"]
-                rem_aft = step["remaining_after"]
-                is_win = step["is_correct"]
-
-                with st.container():
-                    st.markdown(
-                        f"""
-                        <div class="result-card">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                <span style="font-size: 1.1rem; font-weight: 700; color: #f8fafc;">Turn {turn_num}: {guess_w}</span>
-                                <div>
-                                    <span class="badge-blue">Entropy: {h_val:.2f} bits</span>
-                                    <span class="badge-green">Remaining: {rem_bef:,} &rarr; {rem_aft:,}</span>
-                                </div>
+            for stp in sim["history"]:
+                st.markdown(
+                    f"""
+                    <div class="arcade-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <strong>Turn {stp['turn']}: <code>{stp['guess']}</code></strong>
+                            <div>
+                                <span style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; padding: 2px 8px; border-radius: 6px; font-size: 0.8rem;">Entropy: {stp['entropy']:.2f} bits</span>
+                                <span style="background: rgba(34, 197, 94, 0.2); color: #4ade80; padding: 2px 8px; border-radius: 6px; font-size: 0.8rem;">Remaining: {stp['remaining_after']:,}</span>
                             </div>
-                            {render_tiles_html(guess_w, fb)}
                         </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
+                        {render_tiles_html(stp['guess'], stp['feedback'])}
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
 
-            # Benchmark demonstration
-            st.markdown("---")
-            st.markdown("##### 📈 Quick AI Benchmark Test")
-            st.caption("Test the solver's consistency across 5 random secret words simultaneously.")
-            if st.button("🚀 Run 5-Word Random Benchmark"):
-                bench_samples = random.sample(target_words, 5)
-                bench_records = []
-                total_turns = 0
-                for w in bench_samples:
-                    res = simulate_game(secret_word=w, first_guess="SOARE", max_turns=6)
-                    bench_records.append({
-                        "Secret Word": w,
-                        "Status": "Solved ✅" if res["won"] else "Failed ❌",
-                        "Turns Taken": res["turns_taken"],
-                        "Path": " -> ".join([s["guess"] for s in res["history"]])
-                    })
-                    total_turns += res["turns_taken"]
-
-                avg_turns = total_turns / len(bench_samples)
-                st.dataframe(pd.DataFrame(bench_records), hide_index=True, use_container_width=True)
-                st.metric("Benchmark Average Turns", f"{avg_turns:.2f} turns")
-
-    # -----------------------------------------------------
-    # TAB 1C: INFORMATION THEORY EXPLANATION
-    # -----------------------------------------------------
-    with wordle_tab_theory:
-        st.markdown("### 📐 How Shannon Entropy Powers the Solver")
+    # --- TAB 3: THEORY ---
+    with tab_theory:
+        st.markdown("### 🧠 The Math of Shannon Entropy")
         st.markdown(
             r"""
-            Claude Shannon's Information Theory provides the mathematical foundation for Wordle optimization.
-
-            #### 1. The Math of Shannon Entropy
-            Each Wordle feedback consists of 5 colored tiles with 3 possibilities each (Green, Yellow, Gray), producing $3^5 = 243$ possible patterns $p$.
-
-            For any guess $g$ evaluated against the remaining secret word candidates $C$:
-            - The candidate set is partitioned into disjoint buckets $C_p$ corresponding to each pattern $p$.
-            - The probability of receiving pattern $p$ is $P(p) = \frac{|C_p|}{|C|}$.
-            - The **expected information gain (entropy)** $H(g)$ measured in bits is:
-
-            $$H(g) = -\sum_{p} P(p) \log_2(P(p)) = \sum_{p} \frac{|C_p|}{|C|} \log_2\left(\frac{|C|}{|C_p|}\right)$$
-
-            A higher entropy means the guess spreads the candidate words evenly across diverse feedback patterns, guaranteeing the smallest possible expected candidate pool on the following turn!
+            Claude Shannon's Information Theory dictates that the optimal guess is the one that maximizes expected information gain across candidate partitions:
+            $$H(g) = -\sum_{p} P(p) \log_2(P(p)) = \sum_{p} \frac{\vert{}C_p\vert{}}{\vert{}C\vert{}} \log_2\left(\frac{\vert{}C\vert{}}{\vert{}C_p\vert{}}\right)$$
             """
         )
-
-        st.markdown("#### 🏆 Globally Precomputed Top Wordle Openers")
-        openers_df = pd.DataFrame(OPTIMAL_OPENERS)
-        openers_df.columns = ["Word", "Shannon Entropy (bits)", "Expected Remaining Words", "Can Be Answer?"]
-        st.dataframe(openers_df, hide_index=True, use_container_width=True)
-
+        st.markdown("#### 🌟 Globally Precomputed Optimal Openers")
+        st.dataframe(pd.DataFrame(OPTIMAL_OPENERS), hide_index=True, use_container_width=True)
 
 # =========================================================
-# MODE 2: CROSSWORD CLUE MATCHER
+# MODE 2: CROSSWORD CRYPTO MATCHER
 # =========================================================
-else:
+ else:
     st.markdown(
         """
-        <div class="hero-container">
-            <h1 class="hero-title">🔍 Crossword Clue Matcher & Regex Engine</h1>
-            <p class="hero-subtitle">
-                Solve cryptic and standard crossword clues using constraint pattern matching, TF-IDF semantic vector similarity, and word frequency heuristics.
+        <div class="arcade-hero">
+            <h1 class="arcade-title">🧩 Crossword Crypto Matcher</h1>
+            <p class="arcade-subtitle">
+                Decode cryptic and standard crossword clues using anchored regex pattern matching and TF-IDF semantic vector similarity.
             </p>
         </div>
         """,
         unsafe_allow_html=True
     )
 
-    st.markdown("### 🧩 Clue & Pattern Query")
-
-    # Quick presets
-    st.markdown("**⚡ Quick Example Clues:**")
-    preset_cols = st.columns(6)
+    st.markdown("### 🔥 Quick Preset Clues")
+    p_cols = st.columns(6)
     presets = [
-        ("Egyptian Queen", "Egyptian queen for short", "C _ _ O", 4),
-        ("Capital of France", "Capital of France and City of Light", "P _ _ _ S", 5),
-        ("Feline Companion", "Feline companion or pet", "C _ _", 3),
-        ("Opposite of Day", "Opposite of day when sun is down", "N _ _ _ T", 5),
-        ("Large Water Body", "Large expansive body of salt water", "O _ _ _ N", 5),
-        ("Red Gemstone", "Precious deep red gemstone", "R _ _ Y", 4),
+        ("Paris", "Capital of France and City of Light", "P _ _ _ S", 5),
+        ("Cleo", "Egyptian queen for short", "C . . O", 4),
+        ("Cat", "Feline companion or pet", "C _ _", 3),
+        ("Night", "Opposite of day when sun is down", "N _ _ _ T", 5),
+        ("Ocean", "Large expansive body of salt water", "O _ _ _ N", 5),
+        ("Ruby", "Precious deep red gemstone", "R _ _ Y", 4),
     ]
-
-    for pcol, (lbl, p_clue, p_pat, p_len) in zip(preset_cols, presets):
+    for pcol, (lbl, p_clue, p_pat, p_len) in zip(p_cols, presets):
         with pcol:
             if st.button(lbl, use_container_width=True):
                 st.session_state.cw_clue_input = p_clue
@@ -706,137 +557,61 @@ else:
                 st.rerun()
 
     st.markdown("")
+    with st.form("cw_form"):
+        cc1, cc2, cc3 = st.columns([1.8, 1.2, 0.8], gap="medium")
+        with cc1:
+            clue_q = st.text_input("Crossword Clue / Concept", value=st.session_state.cw_clue_input).strip()
+        with cc2:
+            pat_q = st.text_input("Pattern (Blanks: _ or .)", value=st.session_state.cw_pattern_input).strip()
+        with cc3:
+            len_q = st.number_input("Length", min_value=0, max_value=15, value=st.session_state.cw_length_input)
+        
+        search_btn = st.form_submit_button("🔍 Decode Crossword Match", type="primary", use_container_width=True)
 
-    with st.form("crossword_search_form"):
-        col_c1, col_c2, col_c3 = st.columns([1.8, 1.2, 0.8], gap="medium")
-
-        with col_c1:
-            clue_query = st.text_input(
-                "Crossword Clue",
-                value=st.session_state.cw_clue_input,
-                placeholder="e.g. Capital of France, Feline pet, Mona ___",
-                help="Type any crossword clue or concept."
-            ).strip()
-
-        with col_c2:
-            pattern_query = st.text_input(
-                "Pattern (Blanks: _ , . , ?)",
-                value=st.session_state.cw_pattern_input,
-                placeholder="e.g. C _ _ T or P..IS",
-                help="Specify known letters and blanks."
-            ).strip()
-
-        with col_c3:
-            length_query = st.number_input(
-                "Word Length",
-                min_value=0,
-                max_value=15,
-                value=st.session_state.cw_length_input,
-                help="0 = Auto-detect from pattern length"
-            )
-
-        submit_search = st.form_submit_button("🔍 Find Matching Answers", type="primary", use_container_width=True)
-
-    # Live pattern preview
-    if pattern_query:
+    if pat_q:
         st.markdown("**Visual Letter Pattern Slots:**")
-        slots_html = render_pattern_slots_html(pattern_query, length_query)
-        st.markdown(slots_html, unsafe_allow_html=True)
+        st.markdown(render_pattern_slots_html(pat_q, len_q), unsafe_allow_html=True)
 
-    if submit_search or pattern_query or clue_query:
-        with st.spinner("Searching corpus, compiling regex, and calculating TF-IDF cosine similarity..."):
-            results = cw_engine.search_candidates(
-                clue=clue_query,
-                pattern=pattern_query,
-                length=length_query if length_query > 0 else None,
-                top_k=25
-            )
+    if search_btn or pat_q or clue_q:
+        with st.spinner("Analyzing semantic vectors and compiling regex filters..."):
+            results = cw_engine.search_candidates(clue=clue_q, pattern=pat_q, length=len_q if len_q > 0 else None, top_k=20)
 
         st.markdown("---")
-        st.markdown(f"### 📋 Candidate Answers ({len(results)} matches found)")
-
+        st.markdown(f"### 🎯 Matching Answers ({len(results)} found)")
         if not results:
-            st.warning("No candidate answers in the dictionary matched both your pattern and length constraints. Try relaxing the pattern or checking the word length.")
+            st.warning("No matches found for this pattern and clue combination. Try relaxing constraints.")
         else:
-            col_list, col_details = st.columns([1.3, 0.9], gap="large")
-
-            with col_list:
-                for idx, item in enumerate(results, 1):
+            r_col1, r_col2 = st.columns([1.3, 0.9], gap="large")
+            with r_col1:
+                for item in results:
                     ans = item["answer"]
                     score = item["score"]
                     sim = item["semantic_similarity"]
-                    category = item["category"]
-                    best_clue = item["best_clue"]
-                    source = item["source"]
-
-                    # Visual score bar color
-                    if score >= 75:
-                        badge_cls = "badge-green"
-                    elif score >= 50:
-                        badge_cls = "badge-yellow"
-                    else:
-                        badge_cls = "badge-blue"
-
-                    sim_text = f" • Semantic Match: {sim:.1f}%" if sim is not None else ""
-
+                    cat = item["category"]
+                    def_text = item["best_clue"]
+                    
                     st.markdown(
                         f"""
-                        <div class="result-card">
+                        <div class="arcade-card">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <div style="display: flex; align-items: center; gap: 12px;">
-                                    <span style="font-size: 1.25rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: #38bdf8;">{ans}</span>
-                                    <span class="{badge_cls}">Score: {score:.1f}%</span>
-                                    <span class="badge-blue">{len(ans)} Letters</span>
-                                    <span style="font-size: 0.8rem; color: #94a3b8;">({category})</span>
+                                    <span style="font-size: 1.3rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: #38bdf8;">{ans}</span>
+                                    <span style="background: rgba(34, 197, 94, 0.2); color: #4ade80; padding: 3px 8px; border-radius: 6px; font-weight: 600; font-size: 0.82rem;">Score: {score:.1f}%</span>
+                                    <span style="font-size: 0.8rem; color: #94a3b8;">({cat})</span>
                                 </div>
-                                <span style="font-size: 0.8rem; color: #64748b;">Source: {source}</span>
+                                <span style="font-size: 0.8rem; color: #64748b;">{item['source']}</span>
                             </div>
-                            <div style="margin-top: 8px; color: #cbd5e1; font-size: 0.92rem;">
-                                <strong>Corpus Clue / Definition:</strong> <em>"{best_clue}"</em>{sim_text}
+                            <div style="margin-top: 8px; color: #cbd5e1; font-size: 0.9rem;">
+                                <strong>Corpus Definition:</strong> <em>"{def_text}"</em> {f" | Semantic Match: {sim:.1f}%" if sim else ""}
                             </div>
                         </div>
                         """,
                         unsafe_allow_html=True
                     )
-
-            with col_details:
-                st.markdown("#### 📊 Candidate Summary Table")
-                df_data = []
-                for idx, item in enumerate(results, 1):
-                    df_data.append({
-                        "Rank": idx,
-                        "Answer": item["answer"],
-                        "Confidence": f"{item['score']:.1f}%",
-                        "Category": item["category"]
-                    })
-                st.dataframe(pd.DataFrame(df_data), hide_index=True, use_container_width=True)
-
-                st.markdown(
-                    """
-                    <div style="background: #1e293b; padding: 16px; border-radius: 8px; border: 1px solid #334155;">
-                        <h5 style="margin-top: 0; color: #f8fafc;">🔍 How Crossword Matching Works</h5>
-                        <ul style="padding-left: 20px; color: #94a3b8; font-size: 0.88rem; line-height: 1.5;">
-                            <li><strong>Pattern Parsing:</strong> Converted to an anchored regular expression (e.g. <code>^C..T$</code>).</li>
-                            <li><strong>TF-IDF Vectorization:</strong> Clues are transformed into n-gram TF-IDF vectors, and cosine similarity is computed against hundreds of curated crossword definitions.</li>
-                            <li><strong>Hybrid Scoring:</strong> Blends semantic match confidence, word frequency, and direct token presence.</li>
-                        </ul>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-
-    # Cheatsheet expander
-    with st.expander("📖 Crossword Regex & Pattern Cheatsheet"):
-        st.markdown(
-            """
-            | Pattern | Meaning | Example Matches |
-            | :--- | :--- | :--- |
-            | `C _ _ T` | 4-letter word starting with C and ending with T | `CART`, `COAT`, `COST` |
-            | `P . . . S` | 5-letter word starting with P and ending with S | `PARIS`, `PLUMS`, `PIRES` |
-            | `^A[A-Z]{3}E$` | Advanced regex: starts with A, 3 letters, ends with E | `APPLE`, `AGREE`, `ALONE` |
-            | `..T` | 3-letter word ending with T | `CAT`, `BAT`, `HAT` |
-            """
-        )
+            with r_col2:
+                st.markdown("#### 📊 Candidate Summary")
+                summary_data = [{"Answer": i["answer"], "Confidence": f"{i['score']:.1f}%", "Category": i["category"]} for i in results]
+                st.dataframe(pd.DataFrame(summary_data), hide_index=True, use_container_width=True)
 
 # ---------------------------------------------------------
 # Footer
@@ -844,8 +619,8 @@ else:
 st.markdown("---")
 st.markdown(
     """
-    <div style="text-align: center; color: #64748b; font-size: 0.85rem; padding: 12px 0;">
-        AI-Powered Wordle and Crossword Clue Solver • Shannon Entropy & TF-IDF Semantic Search Engine
+    <div style="text-align: center; color: #64748b; font-size: 0.85rem; padding: 10px 0;">
+        🎮 Arcade AI Solver | Powered by Shannon Entropy & TF-IDF Semantic Vectorization
     </div>
     """,
     unsafe_allow_html=True
