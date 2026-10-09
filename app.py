@@ -525,7 +525,8 @@ if mode == "Wordle AI Battle & Solver":
 # =========================================================
 # MODE 2: CROSSWORD CRYPTO MATCHER
 # =========================================================
- else:
+
+else:
     st.markdown(
         """
         <div class="arcade-hero">
